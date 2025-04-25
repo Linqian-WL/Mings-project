@@ -1,64 +1,68 @@
-
 import streamlit as st
 import requests
 import fitz  # PyMuPDF
-import os
 
-st.set_page_config(page_title="PDF Scholar QA", layout="centered")
+st.set_page_config(page_title="PDF AI Reader", layout="centered")
 
-st.title("📄 AI Scholar (Claude 3 PDF QA)")
-st.caption("上傳一篇學術 PDF，提問問題，AI 只根據該論文回答。")
+st.title("📄 AI Academic PDF Q&A (Claude 3 Sonnet)")
+st.markdown("上傳一份 PDF 論文 → 輸入問題 → AI 僅根據該論文內容作答")
 
+# Step 1: 上傳 PDF 並轉成文字
 uploaded_file = st.file_uploader("請上傳 PDF 論文", type=["pdf"])
+pdf_text = ""
 
-question = st.text_input("你想問這篇論文什麼問題？")
-
-if uploaded_file and question:
-    with st.spinner("正在讀取 PDF..."):
-        doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
-        pdf_text = ""
+if uploaded_file:
+    with fitz.open(stream=uploaded_file.read(), filetype="pdf") as doc:
         for page in doc:
             pdf_text += page.get_text()
 
-    with st.spinner("AI 正在思考中..."):
-        headers = {
-            "Authorization": f"Bearer {st.secrets['OPENROUTER_API_KEY']}",
-            "Content-Type": "application/json"
-        }
+    st.success("✅ 論文已成功解析")
 
+# Step 2: 使用者輸入問題
+user_question = st.text_input("請輸入你對論文的問題（英文或中文皆可）")
+
+# Step 3: 點按按鈕送出問題給 Claude
+if st.button("🤖 開始問 AI"):
+    if not uploaded_file or not user_question:
+        st.warning("請先上傳 PDF 並輸入問題")
+    else:
+        # 組 prompt 給 Claude
         prompt = f"""
-You are an academic assistant that only answers based on the uploaded paper. Do not use external knowledge.
+You are an expert academic assistant. Only answer based on the provided paper content below.
+Do not use any external knowledge or assumptions.
 
-Rules:
-- Only answer if the paper directly mentions the information.
-- Use formal academic tone (like Nature, Cell, Science).
-- If not found in the paper, say: "This information is not explicitly stated in the paper."
-- Answer must include:
-  * Reasoning logic
-  * Paragraph citation (e.g., Page 4, Paragraph 3)
-  * If multiple paragraphs support it, cite them all
-  * Confidence score in percentage
+📌 Rules:
+- Answer in professional academic English (e.g., Nature, Science tone)
+- Only use information found in the paper.
+- If the answer is not clearly stated, say: "This information is not explicitly stated in the paper."
+- Include reasoning logic, citation of the source paragraph (e.g., Page 4, Paragraph 2), and confidence in %.
 
-Question:
-{question}
-
-PDF Content:
+--- START OF PAPER ---
 {pdf_text}
+--- END OF PAPER ---
+
+Question: {user_question}
+Answer:
 """
 
-        data = {
-            "model": "anthropic/claude-3-sonnet",
-            "messages": [
-                {"role": "user", "content": prompt}
-            ]
-        }
+        # 呼叫 Claude 3 Sonnet via OpenRouter
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": "Bearer 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",  # <<<<<< 更換成你的 OpenRouter API 金鑰
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "anthropic/claude-3-sonnet",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.2,
+            },
+        )
 
-        response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data)
-
-        if response.status_code == 200:
-            result = response.json()
-            answer = result["choices"][0]["message"]["content"]
-            st.markdown("### 🎓 Claude 回答")
-            st.write(answer)
-        else:
-            st.error("API 請求失敗，請確認 API Key 是否正確")
+        try:
+            answer = response.json()["choices"][0]["message"]["content"]
+            st.markdown("### 🧠 AI 回答：")
+            st.markdown(answer)
+        except Exception as e:
+            st.error("❌ 發生錯誤，請確認 API 金鑰或上傳的 PDF")
+            st.exception(e)
