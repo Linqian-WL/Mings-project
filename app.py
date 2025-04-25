@@ -4,7 +4,7 @@ import fitz  # PyMuPDF
 
 st.set_page_config(page_title="PDF AI Reader", layout="centered")
 
-st.title("📄 AI Academic PDF Q&A (Claude 3 Sonnet)")
+st.title("📄 AI Academic PDF Q&A (Free GPT 3.5)")
 st.markdown("上傳一份 PDF 論文 → 輸入問題 → AI 僅根據該論文內容作答")
 
 # Step 1: 上傳 PDF 並轉成文字
@@ -21,21 +21,20 @@ if uploaded_file:
 # Step 2: 使用者輸入問題
 user_question = st.text_input("請輸入你對論文的問題（英文或中文皆可）")
 
-# Step 3: 點按按鈕送出問題給 Claude
+# Step 3: 點按按鈕送出問題給 GPT
 if st.button("🤖 開始問 AI"):
     if not uploaded_file or not user_question:
         st.warning("請先上傳 PDF 並輸入問題")
     else:
-        # 組 prompt 給 Claude
         prompt = f"""
-You are an expert academic assistant. Only answer based on the provided paper content below.
-Do not use any external knowledge or assumptions.
+You are a scholarly assistant. Only use the following academic paper to answer the user's question. 
+Do NOT use any external knowledge.
 
-📌 Rules:
-- Answer in professional academic English (e.g., Nature, Science tone)
-- Only use information found in the paper.
-- If the answer is not clearly stated, say: "This information is not explicitly stated in the paper."
-- Include reasoning logic, citation of the source paragraph (e.g., Page 4, Paragraph 2), and confidence in %.
+🧠 Rules:
+- Answer in professional academic English.
+- Only use the paper's content.
+- If unclear, say: "This is not explicitly mentioned in the paper."
+- Include reasoning, a citation (e.g., Page X), and your confidence level.
 
 --- START OF PAPER ---
 {pdf_text}
@@ -45,31 +44,21 @@ Question: {user_question}
 Answer:
 """
 
-        # 呼叫 Claude 3 Sonnet via OpenRouter
+        # 免費 GPT API
         response = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": "Bearer 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",  # ← 可改為你自己的 OpenRouter API Key
-                "Content-Type": "application/json",
-            },
+            "https://api.gptfree.app/v1/chat/completions",
+            headers={"Content-Type": "application/json"},
             json={
-                "model": "anthropic/claude-3-sonnet",
+                "model": "gpt-3.5-turbo",
                 "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.2,
+                "temperature": 0.3,
             },
         )
 
         try:
-            response_json = response.json()
-
-            if "choices" in response_json and len(response_json["choices"]) > 0:
-                answer = response_json["choices"][0]["message"]["content"]
-                st.markdown("### 🧠 AI 回答：")
-                st.markdown(answer)
-            else:
-                st.error("❌ Claude 回傳格式錯誤，請稍後再試或檢查 API 金鑰與模型名稱是否正確")
-                st.json(response_json)
-
+            answer = response.json()["choices"][0]["message"]["content"]
+            st.markdown("### 🧠 AI 回答：")
+            st.markdown(answer)
         except Exception as e:
-            st.error("❌ 發生錯誤，請確認 API 金鑰或 Claude 回應格式")
+            st.error("❌ 發生錯誤，請稍後再試或檢查格式")
             st.exception(e)
