@@ -49,7 +49,7 @@ Answer:
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
             headers={
-                "Authorization": "Bearer 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",  # <<<<<< 更換成你的 OpenRouter API 金鑰
+                "Authorization": "Bearer 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",  # ← 可改為你自己的 OpenRouter API Key
                 "Content-Type": "application/json",
             },
             json={
@@ -60,9 +60,16 @@ Answer:
         )
 
         try:
-            answer = response.json()["choices"][0]["message"]["content"]
-            st.markdown("### 🧠 AI 回答：")
-            st.markdown(answer)
+            response_json = response.json()
+
+            if "choices" in response_json and len(response_json["choices"]) > 0:
+                answer = response_json["choices"][0]["message"]["content"]
+                st.markdown("### 🧠 AI 回答：")
+                st.markdown(answer)
+            else:
+                st.error("❌ Claude 回傳格式錯誤，請稍後再試或檢查 API 金鑰與模型名稱是否正確")
+                st.json(response_json)
+
         except Exception as e:
-            st.error("❌ 發生錯誤，請確認 API 金鑰或上傳的 PDF")
+            st.error("❌ 發生錯誤，請確認 API 金鑰或 Claude 回應格式")
             st.exception(e)
