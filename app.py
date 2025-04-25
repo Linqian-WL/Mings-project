@@ -4,7 +4,7 @@ import fitz  # PyMuPDF
 
 st.set_page_config(page_title="PDF AI Reader", layout="centered")
 
-st.title("📄 AI Academic PDF Q&A (Free GPT 3.5)")
+st.title("📄 AI Academic PDF Q&A (GPT 3.5)")
 st.markdown("上傳一份 PDF 論文 → 輸入問題 → AI 僅根據該論文內容作答")
 
 # Step 1: 上傳 PDF 並轉成文字
@@ -26,15 +26,16 @@ if st.button("🤖 開始問 AI"):
     if not uploaded_file or not user_question:
         st.warning("請先上傳 PDF 並輸入問題")
     else:
+        # 組 prompt 給 GPT
         prompt = f"""
-You are a scholarly assistant. Only use the following academic paper to answer the user's question. 
-Do NOT use any external knowledge.
+You are an expert academic assistant. Only answer based on the provided paper content below.
+Do not use any external knowledge or assumptions.
 
-🧠 Rules:
-- Answer in professional academic English.
-- Only use the paper's content.
-- If unclear, say: "This is not explicitly mentioned in the paper."
-- Include reasoning, a citation (e.g., Page X), and your confidence level.
+📌 Rules:
+- Answer in professional academic English (e.g., Nature, Science tone)
+- Only use information found in the paper.
+- If the answer is not clearly stated, say: "This information is not explicitly stated in the paper."
+- Include reasoning logic, citation of the source paragraph (e.g., Page 4, Paragraph 2), and confidence in %.
 
 --- START OF PAPER ---
 {pdf_text}
@@ -44,21 +45,23 @@ Question: {user_question}
 Answer:
 """
 
-        # 免費 GPT API
-        response = requests.post(
-            "https://api.gptfree.app/v1/chat/completions",
-            headers={"Content-Type": "application/json"},
-            json={
-                "model": "gpt-3.5-turbo",
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.3,
-            },
-        )
-
+        # 使用免費的 GPT 3.5 (openrouter.run)
         try:
+            response = requests.post(
+                "https://openrouter.run/api/v1/chat/completions",
+                headers={"Content-Type": "application/json"},
+                json={
+                    "model": "openai/gpt-3.5-turbo",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.3,
+                },
+                timeout=30,
+            )
+
             answer = response.json()["choices"][0]["message"]["content"]
             st.markdown("### 🧠 AI 回答：")
             st.markdown(answer)
+
         except Exception as e:
-            st.error("❌ 發生錯誤，請稍後再試或檢查格式")
+            st.error("❌ 發生錯誤，請稍後再試，或 API 無法連線")
             st.exception(e)
