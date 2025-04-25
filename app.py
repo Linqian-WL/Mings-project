@@ -49,7 +49,7 @@ Answer:
         response = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
             headers={
-                "Authorization": "Bearer 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",  # ← 可改為你自己的 OpenRouter API Key
+                "Authorization": "Bearer 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",  # ← 可改為你自己的 OpenRouter API Key
                 "Content-Type": "application/json",
             },
             json={
